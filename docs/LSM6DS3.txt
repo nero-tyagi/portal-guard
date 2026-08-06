@@ -1,0 +1,2 @@
+LSM6DS – Initialization & Configuration | https://docs.soldered.com/accelerometer-gyroscope/arduino/Initilization%20&%20Configuration/#full-setup-default-settings
+LSM6DS3 | https://github.com/stm32duino/LSM6DS3

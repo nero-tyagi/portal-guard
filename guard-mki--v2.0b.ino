@@ -16,11 +16,13 @@
 
 #include <LSM6DS3-SOLDERED.h>
 #include "RTCZero.h"
+constexpr int IMU_SUCCESS = 0;
 
 // Components.
 Soldered_LSM6DS3 lsm6ds3(
     LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
 );
+
 
 // Timer variables for initializing threshold values for the IMU
 // The guard's environment may have substantial acoustic or mechanical vibrations which aren't meant to trigger the alarm; the threshold must account for such vibrations
@@ -32,7 +34,7 @@ unsigned long initialize_length = 10000;
 // IMU acceleration variables
 int32_t g[3];
 int32_t g_avg[3] = {0, 0, 0};
-int32_t g_threshold[3] = {100, 100, 100}; // threshold values in milli-g's
+int32_t g_threshold[3] = {50, 50, 50}; // threshold values in milli-g's
 
 // Guard variables
 bool armed = true; // in the future, guard will have a receiver that will look for arming signals from a remote; currently, guard is armed by default when it's powered
@@ -64,12 +66,29 @@ void setup() {
   // Initialize components.
   lsm6ds3.begin();
   lsm6ds3.enableAccelerator();
-  lsm6ds3.disableGyro();
 
-  // Serial.print("Accelerometer sample rate = ");
-  // Serial.print(IMU.accelerationSampleRate());
-  // Serial.print(" Hz");
-  // Serial.println();
+  // ____ Low power settings ____
+  
+  lsm6ds3.disableGyro();
+  uint8_t ctrl1;
+  // Read the current accelerometer configuration
+  lsm6ds3.readRegister(
+      &ctrl1,
+      LSM6DS3_ACC_GYRO_CTRL1_XL
+  );
+  // Clear only the ODR bits (upper four bits)
+  ctrl1 &= 0x0F;
+
+  // Set accelerometer ODR to approximately 13 Hz
+  ctrl1 |= LSM6DS3_ACC_GYRO_ODR_XL_13Hz;
+
+  // Write the modified configuration back
+  lsm6ds3.writeRegister(
+      LSM6DS3_ACC_GYRO_CTRL1_XL,
+      ctrl1
+  );
+
+  // ________
 
   // Gathering IMU acceleration readings to average out environmental vibrations and account for them in the threshold values
   Serial.print("Initializing IMU readings for 10 seconds...");
@@ -90,8 +109,7 @@ void setup() {
       previousSecond = currentSecond;
     }
 
-    if (lsm6ds3.getAcceleratorAxes(g)) {
-      Serial.println(g[0]+String(", ")+g[1]+String(", ")+g[2]);
+    if (lsm6ds3.getAcceleratorAxes(g) == 0) {
       initialize_reading_count++;
       for (int i=0; i<3; i++) {
         g_avg[i] += g[i];
@@ -142,7 +160,7 @@ void loop() {
     }
 
     // Checking for movement in between heartbeats
-    if (lsm6ds3.getAcceleratorAxes(g)) {
+    if (lsm6ds3.getAcceleratorAxes(g) == IMU_SUCCESS) {
       if (abs(g[0]) > abs(g_threshold[0])) {
         Serial.println("ALARM");
         ALARM = true;
@@ -178,7 +196,7 @@ void loop() {
       }
 
       // Resetting the timer if the guard is continually moved so the alarm stops only once the guard has been left alone for more than the alarm length
-      if (lsm6ds3.getAcceleratorAxes(g)) {
+      if (lsm6ds3.getAcceleratorAxes(g) == IMU_SUCCESS) {
         if (abs(g[0]) > abs(g_threshold[0])) {
           Serial.println("ALARM");
           ALARM = true;
