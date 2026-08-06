@@ -14,8 +14,13 @@
   This example code is in the public domain.
 */
 
-#include <Arduino_LSM6DS3.h>
+#include <LSM6DS3-SOLDERED.h>
 #include "RTCZero.h"
+
+// Components.
+Soldered_LSM6DS3 lsm6ds3(
+    LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
+);
 
 // Timer variables for initializing threshold values for the IMU
 // The guard's environment may have substantial acoustic or mechanical vibrations which aren't meant to trigger the alarm; the threshold must account for such vibrations
@@ -25,9 +30,9 @@ bool IMU_initializing = false;
 unsigned long initialize_length = 10000;
 
 // IMU acceleration variables
-float x, y, z;
-float g_avg[3] = {0, 0, 0};
-float g_threshold[3] = {0.1, 0.1, 0.1};
+int32_t g[3];
+int32_t g_avg[3] = {0, 0, 0};
+int32_t g_threshold[3] = {100, 100, 100}; // threshold values in milli-g's
 
 // Guard variables
 bool armed = true; // in the future, guard will have a receiver that will look for arming signals from a remote; currently, guard is armed by default when it's powered
@@ -53,15 +58,18 @@ void setup() {
   Serial.begin(300);
   while (!Serial);
 
-  if (!IMU.begin()) {
-    Serial.println("Failed to initialize IMU!");
-    while (1);
-  }
+  // Initialize I2C bus.
+  Wire.begin();
 
-  Serial.print("Accelerometer sample rate = ");
-  Serial.print(IMU.accelerationSampleRate());
-  Serial.print(" Hz");
-  Serial.println();
+  // Initialize components.
+  lsm6ds3.begin();
+  lsm6ds3.enableAccelerator();
+  lsm6ds3.disableGyro();
+
+  // Serial.print("Accelerometer sample rate = ");
+  // Serial.print(IMU.accelerationSampleRate());
+  // Serial.print(" Hz");
+  // Serial.println();
 
   // Gathering IMU acceleration readings to average out environmental vibrations and account for them in the threshold values
   Serial.print("Initializing IMU readings for 10 seconds...");
@@ -82,12 +90,12 @@ void setup() {
       previousSecond = currentSecond;
     }
 
-    if (IMU.accelerationAvailable()) {
-      IMU.readAcceleration(x, y, z);
+    if (lsm6ds3.getAcceleratorAxes(g)) {
+      Serial.println(g[0]+String(", ")+g[1]+String(", ")+g[2]);
       initialize_reading_count++;
-      g_avg[0] += x;
-      g_avg[1] += y;
-      g_avg[2] += z;
+      for (int i=0; i<3; i++) {
+        g_avg[i] += g[i];
+      }
     }
   }
 
@@ -110,7 +118,7 @@ void setup() {
 
   // Changing threshold relative to the recorded floor
     for (int i=0; i<3; i++) {
-    g_threshold[i] += g_avg[i];
+    g_threshold[i] += abs(g_avg[i]);
   }
 }
 
@@ -134,19 +142,18 @@ void loop() {
     }
 
     // Checking for movement in between heartbeats
-    if (IMU.accelerationAvailable()) {
-      IMU.readAcceleration(x, y, z);
-      if (abs(x) > abs(g_threshold[0])) {
+    if (lsm6ds3.getAcceleratorAxes(g)) {
+      if (abs(g[0]) > abs(g_threshold[0])) {
         Serial.println("ALARM");
         ALARM = true;
         break;
       }
-      if (abs(y) > abs(g_threshold[1])) {
+      if (abs(g[1]) > abs(g_threshold[1])) {
         Serial.println("ALARM");
         ALARM = true;
         break;
       }
-      if (abs(z) > abs(g_threshold[2])) {
+      if (abs(g[2]) > abs(g_threshold[2])) {
         Serial.println("ALARM");
         ALARM = true;
         break;
@@ -171,21 +178,20 @@ void loop() {
       }
 
       // Resetting the timer if the guard is continually moved so the alarm stops only once the guard has been left alone for more than the alarm length
-      if (IMU.accelerationAvailable()) {
-        IMU.readAcceleration(x, y, z);
-        if (abs(x) > abs(g_threshold[0])) {
+      if (lsm6ds3.getAcceleratorAxes(g)) {
+        if (abs(g[0]) > abs(g_threshold[0])) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(ALARM);
           alarmStart = millis();
         }
-        if (abs(y) > abs(g_threshold[1])) {
+        if (abs(g[1]) > abs(g_threshold[1])) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(ALARM);
           alarmStart = millis();
         }
-        if (abs(z) > abs(g_threshold[2])) {
+        if (abs(g[2]) > abs(g_threshold[2])) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(ALARM);
