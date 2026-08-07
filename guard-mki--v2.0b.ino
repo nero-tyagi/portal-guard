@@ -73,8 +73,8 @@ void setup() {
   uint8_t ctrl1;
   // Read the current accelerometer configuration
   lsm6ds3.readRegister(
-      &ctrl1,
-      LSM6DS3_ACC_GYRO_CTRL1_XL
+      LSM6DS3_ACC_GYRO_CTRL1_XL,
+      &ctrl1
   );
   // Clear only the ODR bits (upper four bits)
   ctrl1 &= 0x0F;
