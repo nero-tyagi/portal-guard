@@ -16,12 +16,18 @@
 
 #include <LSM6DS3-SOLDERED.h>
 #include "RTCZero.h"
+#include <RH_ASK.h>
+#include <SPI.h>
+#include "transmit.h"
 constexpr int IMU_SUCCESS = 0;
 
 // Components.
 Soldered_LSM6DS3 lsm6ds3(
     LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
 );
+
+const byte TX_PIN = 2; // radio pin
+RH_ASK radio(2000, 0xFF, TX_PIN, 0xFF); // radio object
 
 
 // Timer variables for initializing threshold values for the IMU
@@ -51,7 +57,18 @@ unsigned long heartbeat_length = 30000;
 
 void serialize_json() { }
 String authorize_packet() { }
-void transmit_heartbeat() { }
+void transmit_heartbeat() {
+  char serialNumber[33];
+  char message[50];
+
+  getArduinoSerialNumber(serialNumber, sizeof(serialNumber));
+  snprintf(message, sizeof(message), "ID:%s", serialNumber);
+
+  transmitMessage(radio, message);
+  Serial.print("Transmitting: ");
+  Serial.println(message);
+  delay(5000);
+}
 void transmit_alarm_status(bool status) { }
 void arm() { }
 
@@ -64,8 +81,15 @@ void setup() {
   Wire.begin();
 
   // Initialize components.
-  lsm6ds3.begin();
+  lsm6ds3.begin(); // initializing the IMU sensor
   lsm6ds3.enableAccelerator();
+
+  if (!radio.init()) { // initializing the radio module
+    Serial.print("Radio initialization failed.");
+    while (true) { }
+  }
+
+  Serial.print("Radio initialized.");
 
   // ____ Low power settings ____
   
@@ -76,6 +100,7 @@ void setup() {
       LSM6DS3_ACC_GYRO_CTRL1_XL,
       &ctrl1
   );
+
   // Clear only the ODR bits (upper four bits)
   ctrl1 &= 0x0F;
 
@@ -87,6 +112,10 @@ void setup() {
       LSM6DS3_ACC_GYRO_CTRL1_XL,
       ctrl1
   );
+
+  // Turn off the NINA comms chip
+  pinMode(NINA_RESETN, OUTPUT);
+  digitalWrite(NINA_RESETN, LOW);
 
   // ________
 
@@ -145,7 +174,7 @@ void loop() {
   // Beginning heartbeat to let the sentinel know that guard is active
   heartbeat_timer.begin();
   transmit_heartbeat();
-  Serial.println("HEARTBEAT - NO ALARM");
+  Serial.print("HEARTBEAT - NO ALARM");
 
   unsigned long heartbeatStart = millis();
   int previousSecondHeartbeat = 0;
