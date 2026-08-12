@@ -1,24 +1,9 @@
-/*
-  Arduino LSM6DS3 - Simple Accelerometer
-
-  This example reads the acceleration values from the LSM6DS3
-  sensor and continuously prints them to the Serial Monitor
-  or Serial Plotter.
-
-  The circuit:
-  - Arduino Uno WiFi Rev 2 or Arduino Nano 33 IoT
-
-  created 10 Jul 2019
-  by Riccardo Rizzo
-
-  This example code is in the public domain.
-*/
-
 #include <LSM6DS3-SOLDERED.h>
 #include "RTCZero.h"
 #include <RH_ASK.h>
-#include <SPI.h>
-#include "transmit.h"
+
+#include "messages.h"
+
 constexpr int IMU_SUCCESS = 0;
 
 // Components.
@@ -26,7 +11,7 @@ Soldered_LSM6DS3 lsm6ds3(
     LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
 );
 
-const byte TX_PIN = 2; // radio pin
+const byte TX_PIN = 13; // radio pin
 RH_ASK radio(2000, 0xFF, TX_PIN, 0xFF); // radio object
 
 
@@ -53,28 +38,16 @@ unsigned long alarm_length = 30000;
 // Timer for the heartbeat
 // A heartbeat is necessary to let the sentinel know the guard is still alive; in an event where the guard is somehow neutralized, the sentinel must be informed somehow
 RTCZero heartbeat_timer;
-unsigned long heartbeat_length = 30000;
+unsigned long heartbeat_length = 10000;
 
 void serialize_json() { }
 String authorize_packet() { }
-void transmit_heartbeat() {
-  char serialNumber[33];
-  char message[50];
 
-  getArduinoSerialNumber(serialNumber, sizeof(serialNumber));
-  snprintf(message, sizeof(message), "ID:%s", serialNumber);
-
-  transmitMessage(radio, message);
-  Serial.print("Transmitting: ");
-  Serial.println(message);
-  delay(5000);
-}
-void transmit_alarm_status(bool status) { }
 void arm() { }
 
 void setup() {
 
-  Serial.begin(300);
+  Serial.begin(115200);
   while (!Serial);
 
   // Initialize I2C bus.
@@ -173,7 +146,7 @@ void loop() {
 
   // Beginning heartbeat to let the sentinel know that guard is active
   heartbeat_timer.begin();
-  transmit_heartbeat();
+  transmit_heartbeat(radio);
   Serial.print("HEARTBEAT - NO ALARM");
 
   unsigned long heartbeatStart = millis();
@@ -210,7 +183,7 @@ void loop() {
 
   if (ALARM) {
     alarm_timer.begin();
-    transmit_alarm_status(ALARM);
+    transmit_alarm_status(radio, ALARM);
     unsigned long alarmStart = millis();
     int previousSecondAlarm = 0;
     int currentSecondAlarm = 0;
@@ -229,25 +202,25 @@ void loop() {
         if (abs(g[0]) > abs(g_threshold[0])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(ALARM);
+          transmit_alarm_status(radio, ALARM);
           alarmStart = millis();
         }
         if (abs(g[1]) > abs(g_threshold[1])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(ALARM);
+          transmit_alarm_status(radio, ALARM);
           alarmStart = millis();
         }
         if (abs(g[2]) > abs(g_threshold[2])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(ALARM);
+          transmit_alarm_status(radio, ALARM);
           alarmStart = millis();
         }
       }
     }
     ALARM = false;
-    transmit_alarm_status(ALARM);
-    Serial.println("NO ALARM");
+          transmit_alarm_status(radio, ALARM);
+    Serial.println("NO ALARM\n");
   }
 }
