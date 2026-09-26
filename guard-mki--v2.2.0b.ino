@@ -47,8 +47,8 @@ void arm() { }
 
 void setup() {
 
-  Serial.begin(115200);
-  while (!Serial);
+  // Serial.begin(115200);
+  // while (!Serial);
 
   // Initialize I2C bus.
   Wire.begin();
@@ -86,7 +86,7 @@ void setup() {
       ctrl1
   );
 
-  // Turn off the NINA comms chip
+  // Turn off the NINA comms chip (WiFi and BLE) to save power.
   pinMode(NINA_RESETN, OUTPUT);
   digitalWrite(NINA_RESETN, LOW);
 
@@ -106,8 +106,8 @@ void setup() {
     currentSecond = (millis() - initializationStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
 
     if (previousSecond != currentSecond) {
-      Serial.print(currentSecond);
-      Serial.print("...");
+      // Serial.print(currentSecond);
+      // Serial.print("...");
       previousSecond = currentSecond;
     }
 
@@ -144,10 +144,11 @@ void setup() {
 
 void loop() {
 
+  digitalWrite(TX_PIN, LOW);
   // Beginning heartbeat to let the sentinel know that guard is active
   heartbeat_timer.begin();
-  transmit_heartbeat(radio);
-  Serial.print("HEARTBEAT - NO ALARM");
+  transmit_heartbeat(TX_PIN, radio);
+  // Serial.print("HEARTBEAT - NO ALARM");
 
   unsigned long heartbeatStart = millis();
   int previousSecondHeartbeat = 0;
@@ -156,8 +157,8 @@ void loop() {
     currentSecondHeartbeat = (millis() - heartbeatStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
 
     if (previousSecondHeartbeat != currentSecondHeartbeat) {
-      Serial.print(currentSecondHeartbeat);
-      Serial.print("...");
+      // Serial.print(currentSecondHeartbeat);
+      // Serial.print("...");
       previousSecondHeartbeat = currentSecondHeartbeat;
     }
 
@@ -183,7 +184,7 @@ void loop() {
 
   if (ALARM) {
     alarm_timer.begin();
-    transmit_alarm_status(radio, ALARM);
+    transmit_alarm_status(TX_PIN, radio, ALARM);
     unsigned long alarmStart = millis();
     int previousSecondAlarm = 0;
     int currentSecondAlarm = 0;
@@ -192,8 +193,8 @@ void loop() {
       currentSecondAlarm = (millis() - alarmStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
 
       if (previousSecondAlarm != currentSecondAlarm) {
-        Serial.print(currentSecondAlarm);
-        Serial.print("...");
+        // Serial.print(currentSecondAlarm);
+        // Serial.print("...");
         previousSecondAlarm = currentSecondAlarm;
       }
 
@@ -202,25 +203,25 @@ void loop() {
         if (abs(g[0]) > abs(g_threshold[0])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(radio, ALARM);
+          transmit_alarm_status(TX_PIN, radio, ALARM);
           alarmStart = millis();
         }
         if (abs(g[1]) > abs(g_threshold[1])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(radio, ALARM);
+          transmit_alarm_status(TX_PIN, radio, ALARM);
           alarmStart = millis();
         }
         if (abs(g[2]) > abs(g_threshold[2])) {
           Serial.println("ALARM");
           ALARM = true;
-          transmit_alarm_status(radio, ALARM);
+          transmit_alarm_status(TX_PIN, radio, ALARM);
           alarmStart = millis();
         }
       }
     }
     ALARM = false;
-          transmit_alarm_status(radio, ALARM);
-    Serial.println("NO ALARM\n");
+          transmit_alarm_status(TX_PIN, radio, ALARM);
+    // Serial.println("NO ALARM\n");
   }
 }

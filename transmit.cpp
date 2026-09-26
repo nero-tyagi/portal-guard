@@ -12,7 +12,9 @@ void getArduinoSerialNumber(char *serialNumber, size_t bufferSize) {
            (unsigned long)word2, (unsigned long)word3);
 }
 
-void transmitMessage(RH_ASK &radio, const char *message) {
+void transmitMessage(const byte TX_PIN, RH_ASK &radio, const char *message) {
+  digitalWrite(TX_PIN, HIGH);
   radio.send((uint8_t *)message, strlen(message));
   radio.waitPacketSent();
+  digitalWrite(TX_PIN, LOW);
 }

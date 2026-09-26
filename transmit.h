@@ -5,4 +5,4 @@
 #include <SPI.h>
 
 void getArduinoSerialNumber(char *serialNumber, size_t bufferSize);
-void transmitMessage(RH_ASK &radio, const char *message);
+void transmitMessage(const byte TX_PIN, RH_ASK &radio, const char *message);
