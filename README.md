@@ -91,3 +91,10 @@ The Portal Security System is based on radio communication between a guard and a
 | **Description** |  |
 | **Key properties** | 1. 12 V 2. 1A |
 | **Link** | [https://www.electropi.in/12v-1amp-dc-adaptor?gad\_source=1&gad\_campaignid=23329895947&gclid=Cj0KCQjw9ZLSBhCcARIsAEhGKgMEJgfIoyDQ9II2g4OOKrflaxcw3\_q1YD55OqRRRPN8MJAeuSVvnkcaAq\_rEALw\_wcB](https://www.electropi.in/12v-1amp-dc-adaptor?gad_source=1&gad_campaignid=23329895947&gclid=Cj0KCQjw9ZLSBhCcARIsAEhGKgMEJgfIoyDQ9II2g4OOKrflaxcw3_q1YD55OqRRRPN8MJAeuSVvnkcaAq_rEALw_wcB) |
+
+Arduino IDE Libraries:
+
+These are the libraries that need to be installed before compiling the code:
+1. RH_ASK.h – RadioHead by Mike McCauley
+2. LSM6DS3-SOLDERED.h – Soldered LSM6DS3 Arduino library
+3. RTCZero.h – RTCZero by Arduino
