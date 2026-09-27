@@ -10,7 +10,7 @@ Soldered_LSM6DS3 lsm6ds3(
     LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
 );
 
-RH_ASK radio(2000, 0xFF, Guard::TX_PIN, 0xFF); // radio object
+RH_ASK radio(Guard::RADIO_BITRATE, 0xFF, Guard::TX_PIN, 0xFF); // radio object
 
 //_______________________________________________________________
 
@@ -46,7 +46,9 @@ void setup() {
   lsm6ds3.enableAccelerator();
 
   if (!radio.init()) { // initializing the radio module
-    while (true) { }
+    while (true) {
+      Guard::status = GuardStatus::ERROR;
+    }
   }
 
   // LOW POWER SETUP ____________________________________________

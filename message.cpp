@@ -64,7 +64,7 @@ Message::Message(MessageType type, DeviceID deviceID, const char* message) {
   this->text[sizeof(this->text) - 1] = '\0';
 }
 
-int Message::getType() {
+MessageType Message::getType() const {
   return this->type;
 }
 const char* Message::getID() {

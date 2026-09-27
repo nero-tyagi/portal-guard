@@ -7,7 +7,7 @@ void transmitMessage(const byte TX_PIN, RH_ASK &radio, Message msg) {
   char message[TRANSMISSION_SIZE];
   snprintf(message, sizeof(message),
         "{\"type\":%i,\"id\":\"%s\",\"msg\":\"%s\"}",
-        msg.getType(), msg.getID(), msg.getText());
+        static_cast<int>(msg.getType()), msg.getID(), msg.getText());
 
   digitalWrite(TX_PIN, HIGH);
   radio.send((uint8_t *)message, strlen(message));

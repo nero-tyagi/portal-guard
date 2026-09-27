@@ -5,16 +5,18 @@
 
 // CONSTANTS ____________________________________________________
 
-enum GuardStatus {
+enum class GuardStatus {
     STANDBY,
     BUSY,
     PAIRING,
     ARMED,
     ALARM,
+    ERROR
 };
 
 struct Guard {
     static const byte TX_PIN = 13; // radio pin
+    static const uint16_t RADIO_BITRATE = 2000; // Must exactly match Sentinel's RadioHead bitrate and its TX pin configuration
 
     static constexpr int IMU_SUCCESS = 0;
     static constexpr int MEAN_SAMPLING_SIZE = 100;
