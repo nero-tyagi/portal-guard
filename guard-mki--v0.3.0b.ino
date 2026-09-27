@@ -2,7 +2,7 @@
 #include "RTCZero.h"
 #include <RH_ASK.h>
 
-#include "messages.h"
+#include "transmit.h"
 
 constexpr int IMU_SUCCESS = 0;
 
@@ -16,16 +16,19 @@ RH_ASK radio(2000, 0xFF, TX_PIN, 0xFF); // radio object
 
 
 // Timer variables for initializing threshold values for the IMU
-// The guard's environment may have substantial acoustic or mechanical vibrations which aren't meant to trigger the alarm; the threshold must account for such vibrations
+// The guard's environment may have substantial acoustic or mechanical vibrations which aren't meant to trigger the alarm; the threshold must account for such vibrations. Therefore, it uses a 10 second period to average out its g values.
 RTCZero intialize_timer;
-int initialize_reading_count = 0;
+int init_sample_count = 0;
 bool IMU_initializing = false;
 unsigned long initialize_length = 10000;
 
 // IMU acceleration variables
 int32_t g[3];
-int32_t g_avg[3] = {0, 0, 0};
-int32_t g_threshold[3] = {50, 50, 50}; // threshold values in milli-g's
+int32_t g_mean[3] = {0, 0, 0};
+int32_t g_llimits[3] = {0, 0, 0};
+int32_t g_ulimits[3] = {0, 0, 0};
+int32_t g_custom_threshold = 50; // in milli-g's. Gets applied to both upper and lower limits.
+bool mean_calculated = false;
 
 // Guard variables
 bool armed = true; // in the future, guard will have a receiver that will look for arming signals from a remote; currently, guard is armed by default when it's powered
@@ -33,7 +36,7 @@ bool armed = true; // in the future, guard will have a receiver that will look f
 // Timer for the alarm
 RTCZero alarm_timer;
 bool ALARM = false;
-unsigned long alarm_length = 30000;
+unsigned long alarm_length = 2000;
 
 // Timer for the heartbeat
 // A heartbeat is necessary to let the sentinel know the guard is still alive; in an event where the guard is somehow neutralized, the sentinel must be informed somehow
@@ -100,21 +103,38 @@ void setup() {
   unsigned long initializationStart = millis();
   int previousSecond = 0;
   int currentSecond = 0;
+  int mean_count = 100;
 
   while (millis() - initializationStart < initialize_length) {
 
-    currentSecond = (millis() - initializationStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
-
-    if (previousSecond != currentSecond) {
-      // Serial.print(currentSecond);
-      // Serial.print("...");
+    currentSecond = (millis() - initializationStart) / 1000;
+    if (previousSecond != currentSecond) {  // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
+      Serial.print(currentSecond);
+      Serial.print("...");
       previousSecond = currentSecond;
     }
 
     if (lsm6ds3.getAcceleratorAxes(g) == 0) {
-      initialize_reading_count++;
-      for (int i=0; i<3; i++) {
-        g_avg[i] += g[i];
+      init_sample_count++;
+      if (init_sample_count < mean_count) {
+        for (int i = 0; i < 3; i++) {
+          g_mean[i] += g[i];
+        }
+      } else if (init_sample_count == mean_count) {
+        for (int i = 0; i < 3; i++) {
+          g_mean[i] /= mean_count;
+          g_llimits[i] = g_mean[i];
+          g_ulimits[i] = g_mean[i];
+        }
+      } else {
+        for (int i=0; i<3; i++) {
+          if (g[i] < g_llimits[i]) {
+            g_llimits[i] = g[i];
+          };
+          if (g[i] > g_ulimits[i]) {
+            g_ulimits[i] = g[i];
+          };
+        }
       }
     }
   }
@@ -123,22 +143,19 @@ void setup() {
   IMU_initializing = false;
 
   if (!IMU_initializing) {
-    Serial.println(initialize_reading_count+(String)" readings recorded. Averaging and setting new threshold...");
-    for (int i=0; i<3; i++) {
-      g_avg[i] = g_avg[i]/initialize_reading_count;
-    }
-    
-    Serial.print("x threshold: ");
-    Serial.println(g_avg[0]);
-    Serial.print("y threshold: ");
-    Serial.println(g_avg[1]);
-    Serial.print("z threshold: ");
-    Serial.println(g_avg[2]);
+    Serial.println(init_sample_count+(String)" readings recorded. Averaging and setting new threshold...");
+    char g_values[300];
+    snprintf(g_values, sizeof(g_values),
+      "g limits: \nx limits: [%d, %d]\ny limits: [%d, %d]\nz limits: [%d, %d].\n\n mean g values: [%d, %d, %d]",
+      g_llimits[0], g_ulimits[0], g_llimits[1], g_ulimits[1], g_llimits[2], g_ulimits[2],
+      g_mean[0], g_mean[1], g_mean[2]);
+    Serial.println(g_values);
   }
 
   // Changing threshold relative to the recorded floor
     for (int i=0; i<3; i++) {
-    g_threshold[i] += abs(g_avg[i]);
+      g_llimits[i] -= g_custom_threshold;
+      g_ulimits[i] += g_custom_threshold;
   }
 }
 
@@ -157,30 +174,30 @@ void loop() {
     currentSecondHeartbeat = (millis() - heartbeatStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
 
     if (previousSecondHeartbeat != currentSecondHeartbeat) {
-      // Serial.print(currentSecondHeartbeat);
-      // Serial.print("...");
+      Serial.print(currentSecondHeartbeat);
+      Serial.print("...");
       previousSecondHeartbeat = currentSecondHeartbeat;
     }
 
     // Checking for movement in between heartbeats
     if (lsm6ds3.getAcceleratorAxes(g) == IMU_SUCCESS) {
-      if (abs(g[0]) > abs(g_threshold[0])) {
+      if (g[0] < g_llimits[0] || g[0] > g_ulimits[0]) {
         Serial.println("ALARM");
         ALARM = true;
         break;
-      }
-      if (abs(g[1]) > abs(g_threshold[1])) {
+      };
+      if (g[1] < g_llimits[1] || g[1] > g_ulimits[1]) {
         Serial.println("ALARM");
         ALARM = true;
         break;
-      }
-      if (abs(g[2]) > abs(g_threshold[2])) {
+      };
+      if (g[2] < g_llimits[2] || g[2] > g_ulimits[2]) {
         Serial.println("ALARM");
         ALARM = true;
         break;
-      }
-    }
-  }
+      };
+    };
+  };
 
   if (ALARM) {
     alarm_timer.begin();
@@ -193,26 +210,26 @@ void loop() {
       currentSecondAlarm = (millis() - alarmStart) / 1000; // this "previousSecond" bit is only here to make Serial output prettier; can be removed for prod version
 
       if (previousSecondAlarm != currentSecondAlarm) {
-        // Serial.print(currentSecondAlarm);
-        // Serial.print("...");
+        Serial.print(currentSecondAlarm);
+        Serial.print("...");
         previousSecondAlarm = currentSecondAlarm;
       }
 
       // Resetting the timer if the guard is continually moved so the alarm stops only once the guard has been left alone for more than the alarm length
       if (lsm6ds3.getAcceleratorAxes(g) == IMU_SUCCESS) {
-        if (abs(g[0]) > abs(g_threshold[0])) {
+        if (g[0] < g_llimits[0] || g[0] > g_ulimits[0]) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(TX_PIN, radio, ALARM);
           alarmStart = millis();
         }
-        if (abs(g[1]) > abs(g_threshold[1])) {
+        if (g[1] < g_llimits[1] || g[1] > g_ulimits[1]) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(TX_PIN, radio, ALARM);
           alarmStart = millis();
         }
-        if (abs(g[2]) > abs(g_threshold[2])) {
+        if (g[2] < g_llimits[2] || g[2] > g_ulimits[2]) {
           Serial.println("ALARM");
           ALARM = true;
           transmit_alarm_status(TX_PIN, radio, ALARM);
@@ -222,6 +239,5 @@ void loop() {
     }
     ALARM = false;
           transmit_alarm_status(TX_PIN, radio, ALARM);
-    // Serial.println("NO ALARM\n");
   }
 }

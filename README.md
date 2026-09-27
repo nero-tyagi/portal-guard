@@ -98,3 +98,4 @@ These are the libraries that need to be installed before compiling the code:
 1. RH_ASK.h – RadioHead by Mike McCauley
 2. LSM6DS3-SOLDERED.h – Soldered LSM6DS3 Arduino library
 3. RTCZero.h – RTCZero by Arduino
+4. ArduinoJson – ArduinoJson by Benoit
