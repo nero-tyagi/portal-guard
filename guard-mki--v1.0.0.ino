@@ -3,7 +3,6 @@
 #include <RH_ASK.h>
 
 #include "transmit.h"
-#include "guard.h"
 
 // ARDUINO COMPONENTS ___________________________________________
 
@@ -82,17 +81,18 @@ void setup() {
   intialize_timer.begin();
   unsigned long initializationStart = millis();
 
-  while (millis() - initializationStart < guard.INIT_DURATION) {
+  while (millis() - initializationStart < Guard::INIT_DURATION) {
 
     if (lsm6ds3.getAcceleratorAxes(g) == 0) {
       init_sample_count++;
-      if (init_sample_count < guard.MEAN_SAMPLING_SIZE) {
+      if (init_sample_count <= Guard::MEAN_SAMPLING_SIZE) {
         for (int i = 0; i < 3; i++) {
           g_mean[i] += g[i];
         }
-      } else if (init_sample_count == guard.MEAN_SAMPLING_SIZE) {
+      }
+      if (init_sample_count == Guard::MEAN_SAMPLING_SIZE) {
         for (int i = 0; i < 3; i++) {
-          g_mean[i] /= guard.MEAN_SAMPLING_SIZE;
+          g_mean[i] /= Guard::MEAN_SAMPLING_SIZE;
           g_llimits[i] = g_mean[i];
           g_ulimits[i] = g_mean[i];
         }
@@ -100,10 +100,10 @@ void setup() {
         for (int i=0; i<3; i++) {
           if (g[i] < g_llimits[i]) {
             g_llimits[i] = g[i];
-          };
+          }
           if (g[i] > g_ulimits[i]) {
             g_ulimits[i] = g[i];
-          };
+          }
         }
       }
     }
@@ -116,7 +116,7 @@ void setup() {
   }
  // _____________________________________________________________
 
- guard.status = GuardStatus::ARMED; // Need to add pairing behavior along with arming control.
+ Guard::status = GuardStatus::ARMED; // Need to add pairing behavior along with arming control.
 }
 
 void loop() {
@@ -129,48 +129,48 @@ void loop() {
 
   unsigned long heartbeatStart = millis();
 
-  while (millis() - heartbeatStart < guard.HEARTBEAT_INT) {
+  while (millis() - heartbeatStart < Guard::HEARTBEAT_INT) {
 
     // Checking for movement in between heartbeats
-    if (lsm6ds3.getAcceleratorAxes(g) == guard.IMU_SUCCESS) {
+    if (lsm6ds3.getAcceleratorAxes(g) == Guard::IMU_SUCCESS) {
       if (g[0] < g_llimits[0] || g[0] > g_ulimits[0]) {
-        guard.status = GuardStatus::ALARM;
+        Guard::status = GuardStatus::ALARM;
         break;
       };
       if (g[1] < g_llimits[1] || g[1] > g_ulimits[1]) {
-        guard.status = GuardStatus::ALARM;
+        Guard::status = GuardStatus::ALARM;
         break;
       };
       if (g[2] < g_llimits[2] || g[2] > g_ulimits[2]) {
-        guard.status = GuardStatus::ALARM;
+        Guard::status = GuardStatus::ALARM;
         break;
       };
     };
   };
 
-  if (guard.status == GuardStatus::ALARM) {
+  if (Guard::status == GuardStatus::ALARM) {
     alarm_timer.begin();
-    transmit_alarm_on(TX_PIN, radio, guard.status);
+    transmit_alarm_on(TX_PIN, radio, Guard::status);
     unsigned long alarmStart = millis();
 
-    while (millis() - alarmStart < guard.ALARM_DURATION) {
+    while (millis() - alarmStart < Guard::ALARM_DURATION) {
 
       // Resetting the timer if the guard is continually moved so the alarm stops only once the guard has been left alone for more than the alarm length
-      if (lsm6ds3.getAcceleratorAxes(g) == guard.IMU_SUCCESS) {
+      if (lsm6ds3.getAcceleratorAxes(g) == Guard::IMU_SUCCESS) {
         if (g[0] < g_llimits[0] || g[0] > g_ulimits[0]) {
-          transmit_alarm_on(TX_PIN, radio, guard.status);
+          transmit_alarm_on(TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
         if (g[1] < g_llimits[1] || g[1] > g_ulimits[1]) {
-          transmit_alarm_on(TX_PIN, radio, guard.status);
+          transmit_alarm_on(TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
         if (g[2] < g_llimits[2] || g[2] > g_ulimits[2]) {
-          transmit_alarm_on(TX_PIN, radio, guard.status);
+          transmit_alarm_on(TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
       }
     }
-    transmit_alarm_off(TX_PIN, radio, guard.status);
+    transmit_alarm_off(TX_PIN, radio, Guard::status);
   }
 }

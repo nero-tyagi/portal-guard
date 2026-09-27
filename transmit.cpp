@@ -1,8 +1,6 @@
 #include <SPI.h> //RadioHead's dependency
 
 #include "transmit.h"
-#include "message.h"
-#include "guard.h"
 
 void transmitMessage(const byte TX_PIN, RH_ASK &radio, Message msg) {
   // Creating the transmission
@@ -24,15 +22,15 @@ void transmit_heartbeat(const byte TX_PIN, RH_ASK &radio) {
 }
 
 void transmit_alarm_on(const byte TX_PIN, RH_ASK &radio, GuardStatus &status) {
-  guard.status = GuardStatus::ALARM;
+  status = GuardStatus::ALARM;
   MessageType type = MessageType::ALARMON;
   Message alarm(type);
   transmitMessage(TX_PIN, radio, alarm);
 }
 
 void transmit_alarm_off(const byte TX_PIN, RH_ASK &radio, GuardStatus &status) {
-  guard.status = GuardStatus::ARMED;
-  MessageType type = MessageType::ALARMON;
+  status = GuardStatus::ARMED;
+  MessageType type = MessageType::ALARMOFF;
   Message alarm(type);
   transmitMessage(TX_PIN, radio, alarm);
 }

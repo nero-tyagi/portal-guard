@@ -19,9 +19,7 @@ struct Guard {
     static constexpr unsigned long ALARM_DURATION = 2000UL;
     static constexpr unsigned long HEARTBEAT_INT = 120000UL;
 
-    GuardStatus status = GuardStatus::STANDBY;
+    static GuardStatus status;
 };
-
-Guard guard;
 
 #endif
