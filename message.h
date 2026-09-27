@@ -27,7 +27,7 @@ private:
 public:
   DeviceID();
   DeviceID(char* id);
-  
+
   const char* getID();
 };
 
@@ -42,7 +42,7 @@ public:
   Message(MessageType type);
   Message(MessageType type, const char* message);
   Message(MessageType type, DeviceID deviceID, const char* message);
-  
+
   int getType();
   const char* getID();
   const char* getText();

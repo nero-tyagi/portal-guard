@@ -4,8 +4,12 @@
 #include <Arduino.h>
 #include <RH_ASK.h> // RadioHead – radio transceiver library
 
-void transmitMessage(const byte TX_PIN, RH_ASK &radio, const char *message);
+#include "message.h"
+#include "guard.h"
+
+void transmitMessage(const byte TX_PIN, RH_ASK &radio, Message msg);
 void transmit_heartbeat(const byte TX_PIN, RH_ASK &radio);
-void transmit_alarm_status(const byte TX_PIN, RH_ASK &radio, bool status);
+void transmit_alarm_on(const byte TX_PIN, RH_ASK &radio, GuardStatus &status);
+void transmit_alarm_off(const byte TX_PIN, RH_ASK &radio, GuardStatus &status);
 
 #endif

@@ -1,5 +1,3 @@
-// DeviceID class definitions
-
 #include "message.h"
 #include <stdint.h>
 #include <cstdio>
@@ -42,7 +40,7 @@ Message::Message() {
   strncpy(this->text, "", sizeof(this->text) - 1);
   this->text[sizeof(this->text) - 1] = '\0';
 }
- 
+
 Message::Message(MessageType type) {
   this->type = type;
   DeviceID deviceID;

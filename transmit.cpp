@@ -1,8 +1,16 @@
-#include "transmit.h"
-#include "message.h"
 #include <SPI.h> //RadioHead's dependency
 
-void transmitMessage(const byte TX_PIN, RH_ASK &radio, const char *message) {
+#include "transmit.h"
+#include "message.h"
+#include "guard.h"
+
+void transmitMessage(const byte TX_PIN, RH_ASK &radio, Message msg) {
+  // Creating the transmission
+  char message[TRANSMISSION_SIZE];
+  snprintf(message, sizeof(message),
+        "{\"type\":%i,\"id\":\"%s\",\"msg\":\"%s\"}",
+        msg.getType(), msg.getID(), msg.getText());
+
   digitalWrite(TX_PIN, HIGH);
   radio.send((uint8_t *)message, strlen(message));
   radio.waitPacketSent();
@@ -12,36 +20,19 @@ void transmitMessage(const byte TX_PIN, RH_ASK &radio, const char *message) {
 void transmit_heartbeat(const byte TX_PIN, RH_ASK &radio) {
   MessageType type = MessageType::HEARTBEAT;
   Message heartbeat(type);
-  char transmission[TRANSMISSION_SIZE];
-  snprintf(transmission, sizeof(transmission),
-          "{\"type\":%i,\"id\":\"%s\",\"msg\":\"%s\"}",
-          heartbeat.getType(), heartbeat.getID(), heartbeat.getText());
-
-  digitalWrite(TX_PIN, HIGH);
-  transmitMessage(TX_PIN, radio, transmission);
-  Serial.print("\nTransmitting: ");
-  Serial.println(transmission);
-  digitalWrite(TX_PIN, LOW);
-  // delay(5000);
+  transmitMessage(TX_PIN, radio, heartbeat);
 }
 
-void transmit_alarm_status(const byte TX_PIN, RH_ASK &radio, bool status) {
-  MessageType type;
-  if (status) {
-    type = MessageType::ALARMON;
-  } else {
-    type = MessageType::ALARMOFF;
-  }
-
+void transmit_alarm_on(const byte TX_PIN, RH_ASK &radio, GuardStatus &status) {
+  guard.status = GuardStatus::ALARM;
+  MessageType type = MessageType::ALARMON;
   Message alarm(type);
-  char transmission[TRANSMISSION_SIZE];
-  snprintf(transmission, sizeof(transmission),
-          "{\"type\":%i,\"id\":\"%s\",\"msg\":\"%s\"}",
-          alarm.getType(), alarm.getID(), alarm.getText());
+  transmitMessage(TX_PIN, radio, alarm);
+}
 
-  digitalWrite(TX_PIN, HIGH);
-  transmitMessage(TX_PIN, radio, transmission);
-  Serial.print("\nTransmitting: ");
-  Serial.println(transmission);
-  digitalWrite(TX_PIN, LOW);
+void transmit_alarm_off(const byte TX_PIN, RH_ASK &radio, GuardStatus &status) {
+  guard.status = GuardStatus::ARMED;
+  MessageType type = MessageType::ALARMON;
+  Message alarm(type);
+  transmitMessage(TX_PIN, radio, alarm);
 }
