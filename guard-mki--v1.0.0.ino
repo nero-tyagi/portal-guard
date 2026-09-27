@@ -10,8 +10,7 @@ Soldered_LSM6DS3 lsm6ds3(
     LSM6DS3_ACC_GYRO_I2C_ADDRESS_LOW
 );
 
-const byte TX_PIN = 13; // radio pin
-RH_ASK radio(2000, 0xFF, TX_PIN, 0xFF); // radio object
+RH_ASK radio(2000, 0xFF, Guard::TX_PIN, 0xFF); // radio object
 
 //_______________________________________________________________
 
@@ -121,11 +120,11 @@ void setup() {
 
 void loop() {
 
-  digitalWrite(TX_PIN, LOW);
+  digitalWrite(Guard::TX_PIN, LOW);
 
   // Beginning heartbeat to let the sentinel know that guard is active
   heartbeat_timer.begin();
-  transmit_heartbeat(TX_PIN, radio);
+  transmit_heartbeat(Guard::TX_PIN, radio);
 
   unsigned long heartbeatStart = millis();
 
@@ -150,7 +149,7 @@ void loop() {
 
   if (Guard::status == GuardStatus::ALARM) {
     alarm_timer.begin();
-    transmit_alarm_on(TX_PIN, radio, Guard::status);
+    transmit_alarm_on(Guard::TX_PIN, radio, Guard::status);
     unsigned long alarmStart = millis();
 
     while (millis() - alarmStart < Guard::ALARM_DURATION) {
@@ -158,19 +157,19 @@ void loop() {
       // Resetting the timer if the guard is continually moved so the alarm stops only once the guard has been left alone for more than the alarm length
       if (lsm6ds3.getAcceleratorAxes(g) == Guard::IMU_SUCCESS) {
         if (g[0] < g_llimits[0] || g[0] > g_ulimits[0]) {
-          transmit_alarm_on(TX_PIN, radio, Guard::status);
+          transmit_alarm_on(Guard::TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
         if (g[1] < g_llimits[1] || g[1] > g_ulimits[1]) {
-          transmit_alarm_on(TX_PIN, radio, Guard::status);
+          transmit_alarm_on(Guard::TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
         if (g[2] < g_llimits[2] || g[2] > g_ulimits[2]) {
-          transmit_alarm_on(TX_PIN, radio, Guard::status);
+          transmit_alarm_on(Guard::TX_PIN, radio, Guard::status);
           alarmStart = millis();
         }
       }
     }
-    transmit_alarm_off(TX_PIN, radio, Guard::status);
+    transmit_alarm_off(Guard::TX_PIN, radio, Guard::status);
   }
 }

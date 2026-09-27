@@ -1,6 +1,8 @@
 #ifndef GUARD_H
 #define GUARD_H
 
+#include <Arduino.h>
+
 // CONSTANTS ____________________________________________________
 
 enum GuardStatus {
@@ -12,6 +14,8 @@ enum GuardStatus {
 };
 
 struct Guard {
+    static const byte TX_PIN = 13; // radio pin
+
     static constexpr int IMU_SUCCESS = 0;
     static constexpr int MEAN_SAMPLING_SIZE = 100;
 
